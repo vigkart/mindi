@@ -3,22 +3,9 @@ import os
 from scipy.stats import zscore
 
 # Define the directory paths
-raw_data_dir = r'C:\Users\vkarthik\Documents\vscode\mindi\trading_data\raw_data'
-clean_data_dir = r'C:\Users\vkarthik\Documents\vscode\mindi\trading_data\clean_data'
-outliers_dir = r'C:\Users\vkarthik\Documents\vscode\mindi\trading_data\outliers'
-
-# Create the output directories if they don't exist
-os.makedirs(clean_data_dir, exist_ok=True)
-os.makedirs(outliers_dir, exist_ok=True)
-
-import pandas as pd
-import os
-from scipy.stats import zscore
-
-# Define the directory paths
-raw_data_dir = r'C:\Users\vkarthik\Documents\vscode\mindi\trading_data\raw_data'
-clean_data_dir = r'C:\Users\vkarthik\Documents\vscode\mindi\trading_data\clean_data'
-outliers_dir = r'C:\Users\vkarthik\Documents\vscode\mindi\trading_data\outliers'
+raw_data_dir = r'trading_data/raw_data'
+clean_data_dir = r'trading_data/clean_data'
+outliers_dir = r'trading_data/outliers'
 
 # Create the output directories if they don't exist
 os.makedirs(clean_data_dir, exist_ok=True)
@@ -34,8 +21,14 @@ for filename in os.listdir(raw_data_dir):
         data_path = os.path.join(raw_data_dir, filename)
         data = pd.read_csv(data_path)
         
-        # Remove rows where 'avg_entry_px' or 'avg_exit_px' is 0
-        data = data[(data['avg_entry_px'] != 0) | (data['avg_exit_px'] != 0)]
+        # Checking if turd to decide limit for cutting low value, unclean trades
+        turd = [2, 7, 8 , 9 , 10 , 11, 23]
+        if int(algo_number) in turd:
+            # Remove rows where 'avg_entry_px' or 'avg_exit_px' is < .50 for turd strategies
+            data = data[(data['avg_entry_px'] > .5) | (data['avg_exit_px'] > .5)]
+        else:
+            # Remove rows where 'avg_entry_px' or 'avg_exit_px' is < 5 for non-turd strategies
+            data = data[(data['avg_entry_px'] > 5) | (data['avg_exit_px'] > 5)]
         
         # Calculate the ratio and z-scores for avg_entry_px / avg_exit_px and pnl
         data['price_ratio'] = data['avg_entry_px'] / data['avg_exit_px']
