@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import pandas_market_calendars as mcal
+from matplotlib import pyplot as plt
 
 clean_data_dir = "trading_data/clean_data"
 filename = f"{clean_data_dir}/46_clean.csv"
@@ -64,8 +65,8 @@ def aggregate(df, start, end):
 
     # the df['exit_day_num'][start] will give the day that the moving average ends on, which is actually also the the day (x-axis value) of the statistics
     x = df['exit_day_num'][start]
-    stats_df['interval_start'][x] = df['exit_day_num'][start]
-    stats_df['interval_end'][x] = df['exit_day_num'][end]
+    stats_df['interval_start'][x] = trading_dates[df['exit_day_num'][start]].strftime("%Y-%m-%d")
+    stats_df['interval_end'][x] = trading_dates[df['exit_day_num'][end]].strftime("%Y-%m-%d")
     stats_df['avg_pnl'][x] = avg_pnl
     stats_df['num_trades'][x] = num_trades
     stats_df['total_pnl'][x] = total_pnl
@@ -91,5 +92,7 @@ while i > 0:
         # if I want to here I can aggregate all of the statistics at the beginning
         break
 
-
+stats_df['interval_start'] = pd.to_datetime(stats_df['interval_start'])
 print(stats_df)
+plt.plot(stats_df['interval_start'], stats_df['avg_pnl'])
+plt.show()
