@@ -27,7 +27,11 @@ try:
 except KeyError as e:
     print(f"this trading data set has trades on {e.args[0]}, which is not registered as a trading day")
 
+# Creating stats dataframe
+stats = ['interval_start', 'interval_end', 'avg_pnl', 'num_trades', 'total_pnl', 'pl_ratio']
+stats_df = pd.DataFrame(index=range(trading_dates.get_loc(pd.Timestamp(end_date).date())), columns=stats)
 
+# method to aggregate the stats for a given interval
 def aggregate(df, start, end):
     total_pnl = 0
     num_trades = start - end + 1 # each row is one trade & going backwards, so end - start is number of trades (zero based index)
@@ -45,16 +49,31 @@ def aggregate(df, start, end):
             losers += 1
             losses += df['pnl'][i]
         i -= 1
+        if i < 0:
+            print(i)
+            raise IndexError
     
-    print(f"winners: {winners}, losers: {losers}, gains: {gains}, losses: {losses}")
-    pl_ratio = (gains/winners)/(losses/losers)
+    if winners == 0 and losers == 0: # if all trades for interval break even
+        pl_ratio = 0
+    else:
+        pl_ratio = (gains/winners)/(losses/losers)
     avg_pnl = total_pnl/num_trades
-    print(f"your pl ratio is {pl_ratio} and your avg pnl is {avg_pnl}")
-    print(f"start: {start}, end {end}")
+
+    # print(f"your pl ratio is {pl_ratio} and your avg pnl is {avg_pnl}")
+    # print(f"start: {df['exit_day_num'][start]}, end {df['exit_day_num'][end]}")
+
+    # the df['exit_day_num'][start] will give the day that the moving average ends on, which is actually also the the day (x-axis value) of the statistics
+    x = df['exit_day_num'][start]
+    stats_df['interval_start'][x] = df['exit_day_num'][start]
+    stats_df['interval_end'][x] = df['exit_day_num'][end]
+    stats_df['avg_pnl'][x] = avg_pnl
+    stats_df['num_trades'][x] = num_trades
+    stats_df['total_pnl'][x] = total_pnl
+    stats_df['pl_ratio'][x] = pl_ratio
 
 
-# Aggregating statistics from the latest trade to the earliest trade
-granularity = 1
+# Loop allows us to calculate moving averages/sums of the statistics for any interval (smallest interval is 1D)
+granularity = 3
 
 i = len(df['exit_day_num']) - 1
 while i > 0:
@@ -65,10 +84,12 @@ while i > 0:
             days[df['exit_day_num'][i]] = i
         i -= 1 
 
-    aggregate(df, start, i + 2)
-
     try: 
-        i = days[list(days)[granularity]] 
+        aggregate(df, start, i + 2)
+        i = days[list(days)[1]] 
     except IndexError:
         # if I want to here I can aggregate all of the statistics at the beginning
         break
+
+
+print(stats_df)
