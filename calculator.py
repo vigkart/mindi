@@ -2,6 +2,8 @@ import pandas as pd
 import os
 import pandas_market_calendars as mcal
 from matplotlib import pyplot as plt
+import seaborn as sns
+import numpy as np
 
 clean_data_dir = "trading_data/clean_data"
 filename = f"{clean_data_dir}/46_clean.csv"
@@ -30,10 +32,10 @@ except KeyError as e:
 
 # Creating stats dataframe
 stats = ['interval_start', 'interval_end', 'avg_pnl', 'num_trades', 'total_pnl', 'pl_ratio']
-stats_df = pd.DataFrame(index=range(trading_dates.get_loc(pd.Timestamp(end_date).date())), columns=stats)
+stats_df = pd.DataFrame(index=range(trading_dates.get_loc(pd.Timestamp(end_date).date())))
 
 # method to aggregate the stats for a given interval
-def aggregate(df, start, end):
+def aggregate(df, start, end, interval):
     total_pnl = 0
     num_trades = start - end + 1 # each row is one trade & going backwards, so end - start is number of trades (zero based index)
     winners = 0 # number of winning trades
@@ -60,17 +62,18 @@ def aggregate(df, start, end):
         pl_ratio = (gains/winners)/(losses/losers)
     avg_pnl = total_pnl/num_trades
 
-    # print(f"your pl ratio is {pl_ratio} and your avg pnl is {avg_pnl}")
-    # print(f"start: {df['exit_day_num'][start]}, end {df['exit_day_num'][end]}")
-
-    # the df['exit_day_num'][start] will give the day that the moving average ends on, which is actually also the the day (x-axis value) of the statistics
-    x = df['exit_day_num'][start]
-    stats_df['interval_start'][x] = trading_dates[df['exit_day_num'][start]].strftime("%Y-%m-%d")
-    stats_df['interval_end'][x] = trading_dates[df['exit_day_num'][end]].strftime("%Y-%m-%d")
-    stats_df['avg_pnl'][x] = avg_pnl
-    stats_df['num_trades'][x] = num_trades
-    stats_df['total_pnl'][x] = total_pnl
-    stats_df['pl_ratio'][x] = pl_ratio
+    # prev_day is the day trailing stats are aggregated for, and the current day is prev_day + 1
+    prev_day = df['exit_day_num'][start]
+    try:
+        stats_df['day'][prev_day] = trading_dates[df['exit_day_num'][start + 1]].strftime("%Y-%m-%d")
+    except KeyError:
+        stats_df['day'][prev_day] = np.nan
+    # stats_df['interval_start'][prev_day] = trading_dates[df['exit_day_num'][start]].strftime("%Y-%m-%d")
+    # stats_df['interval_end'][prev_day] = trading_dates[df['exit_day_num'][end]].strftime("%Y-%m-%d")
+    stats_df[f'avg_pnl_last{interval}D'][prev_day] = avg_pnl
+    stats_df[f'num_trades_last_{interval}D'][prev_day] = num_trades
+    stats_df[f'total_pnl_last_{interval}D'][prev_day] = total_pnl
+    stats_df[f'pl_ratio_last{interval}D'][prev_day] = pl_ratio
 
 
 # Loop allows us to calculate moving averages/sums of the statistics for any interval (smallest interval is 1D)
@@ -86,13 +89,24 @@ while i > 0:
         i -= 1 
 
     try: 
-        aggregate(df, start, i + 2)
+        aggregate(df, start, i + 2, granularity)
         i = days[list(days)[1]] 
     except IndexError:
         # if I want to here I can aggregate all of the statistics at the beginning
         break
 
-stats_df['interval_start'] = pd.to_datetime(stats_df['interval_start'])
+
+
+
+# Plotting stuff:
+
+# stats_df['interval_start'] = pd.to_datetime(stats_df['interval_start'])
 print(stats_df)
-plt.plot(stats_df['interval_start'], stats_df['avg_pnl'])
-plt.show()
+# plt.plot(stats_df['interval_start'], stats_df['avg_pnl'])
+
+# corr_df = stats_df.drop(['interval_start', 'interval_end'], axis=1)
+
+# corr = corr_df.astype('float').corr()
+# heatmap = sns.heatmap(corr)
+
+# plt.show()
