@@ -48,6 +48,3 @@ for filename in os.listdir(raw_data_dir):
         # Save the outliers to a separate CSV file
         outliers_path = os.path.join(outliers_dir, f'{algo_number}_outliers.csv')
         outliers.to_csv(outliers_path, index=False)
-
-
-
