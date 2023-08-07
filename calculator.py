@@ -140,8 +140,8 @@ def build_features(intervals, df, trading_dates):
 
 
     # Loop allows us to calculate moving averages/sums of the statistics for any interval (smallest interval is 1D)
-    for i in intervals: 
-        granularity = i
+    for interval in intervals: 
+        granularity = interval
 
         i = len(df['exit_day_num']) - 1
         while i > 0:
@@ -151,17 +151,19 @@ def build_features(intervals, df, trading_dates):
                 if df['exit_day_num'][i] not in days:
                     days[df['exit_day_num'][i]] = i
                 i -= 1 
-
-            try: 
-                stats_df = aggregate(df, start, i + 2, granularity, stats_df, trading_dates)
-                i = days[list(days)[1]] 
-            except IndexError:
-                # if I want to here I can aggregate all of the statistics at the beginning
-                break
-    
+            if len(days) == granularity + 1 or len(days) == granularity:
+                try: 
+                    stats_df = aggregate(df, start, i + 2, granularity, stats_df, trading_dates)
+                    i = days[list(days)[1]] 
+                except IndexError:
+                    # if I want to here I can aggregate all of the statistics at the beginning
+                    break
+            elif len(days) < granularity:
+                i = -1
     return stats_df
 
 df, trading_dates = get_trading_dates(46)
 intervals = [1, 3, 5, 10, 21] # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
 
-print(build_features(intervals, df, trading_dates))
+output = build_features(intervals, df, trading_dates)
+output.to_csv('training_data/sample_output3.csv', index=False)
