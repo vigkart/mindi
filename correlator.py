@@ -17,7 +17,7 @@ from scipy.stats import pearsonr
 from scipy.stats import spearmanr
 import math
 
-df = pd.read_csv("training_data/sample_output3.csv")
+df = pd.read_csv("training_data/sample_output4.csv")
 quantile_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] # Currently using deciles
 tile_data = pd.DataFrame(index=range(10), columns=df.columns[2:])
 
@@ -60,6 +60,6 @@ heatmap_data = tile_data
 for col in heatmap_data:
     heatmap_data[col] = (heatmap_data[col] - heatmap_data[col].min()) / (heatmap_data[col].max() - heatmap_data[col].min())
 
-Plotting
+# Plotting
 sns.heatmap(heatmap_data.astype(float))
 plt.show()

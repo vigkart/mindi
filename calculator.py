@@ -2,6 +2,7 @@ import pandas as pd
 # import os
 import pandas_market_calendars as mcal
 import numpy as np
+import math
 
 def get_trading_dates(algo_num):
     '''gets valid trading dates and adds trading day index to clean data
@@ -40,7 +41,7 @@ def aggregate(df, start, end, interval, stats_df, trading_dates):
     '''Aggregates trailing stats
 
     Aggregates stats for interval starting from latest date to earliest date. 
-    Average pnl (pnl per trade), sum of trades, sum of profits, pl ratio
+    Average pnl (pnl per trade), sum of trades, sum of profits, pl ratio, standard deviation (std)
     
     Parameters:
         df: Dataframe
@@ -63,6 +64,7 @@ def aggregate(df, start, end, interval, stats_df, trading_dates):
     losers = 0 # number of losing trades
     gains = 0
     losses = 0
+
     i = start
     while i >= end:
         total_pnl += df['pnl'][i]
@@ -77,11 +79,22 @@ def aggregate(df, start, end, interval, stats_df, trading_dates):
             print(i)
             raise IndexError
     
+
     if winners == 0 and losers == 0: # if all trades for interval break even
         pl_ratio = 0
     else:
         pl_ratio = (gains/winners)/(losses/losers)
+    
     avg_pnl = total_pnl/num_trades
+    
+    # Calculate trailing standard deviation (std)
+    i = start
+    sum = 0
+    while i >= end:
+        sum += (df['pnl'][i] - avg_pnl) ** 2
+        i -= 1
+
+    std = math.sqrt(sum/num_trades)
 
     # index is the day trailing stats are aggregated for, and the current day is index + 1
     index = df['exit_day_num'][start]
@@ -100,13 +113,11 @@ def aggregate(df, start, end, interval, stats_df, trading_dates):
     stats_df[f'num_trades_last_{interval}D'][index] = num_trades
     stats_df[f'pnl_last_{interval}D'][index] = total_pnl
     stats_df[f'pl_ratio_last_{interval}D'][index] = pl_ratio
+    stats_df[f'std_last_{interval}D'][index] = std
 
     return stats_df
 
 # Creating stats dataframe
-
-# TODO: Aggregate standard deviation for trailing intervals
-
 def build_features(intervals, df, trading_dates):
     '''Builds stats_df that has {day | pnl | trailing stats for various intervals}'''
 
@@ -117,6 +128,7 @@ def build_features(intervals, df, trading_dates):
         stats.append(f'num_trades_last_{i}D')
         stats.append(f'pnl_last_{i}D')
         stats.append(f'pl_ratio_last_{i}D')
+        stats.append(f'std_last_{i}D')
     stats_df = pd.DataFrame(index=range(len(trading_dates)), columns=stats)
 
 
@@ -147,4 +159,4 @@ df, trading_dates = get_trading_dates(46)
 intervals = [1, 3, 5, 10, 21] # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
 
 output = build_features(intervals, df, trading_dates)
-output.to_csv('training_data/sample_output3.csv', index=False)
+output.to_csv('training_data/sample_output4.csv', index=False)
