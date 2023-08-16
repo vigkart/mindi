@@ -14,7 +14,7 @@ def get_trading_dates(algo_num):
     filename = f"{clean_data_dir}/{algo_num}_clean.csv"
     if filename.endswith('_matches.csv'):
         algo_number = filename.split('_')[0]
-    df = pd.read_csv(filename, keep_default_na=False) # Pandas reads 'NA' as nan, but one of the stock tickers is 'NA', so we turn this off
+    df = pd.read_csv(filename, usecols=['first_entry_time', 'last_exit_time', 'pnl'])
 
     # Getting date range for cleaned pdq-output
     start = df['first_entry_time'].min()
@@ -159,11 +159,11 @@ def build_features(intervals, df, trading_dates):
 start = time.time()
 
 try:
-    df, trading_dates = get_trading_dates(46)
+    df, trading_dates = get_trading_dates(35)
     intervals = [1, 3, 5, 10, 21] # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
 
     output = build_features(intervals, df, trading_dates)
-    output.to_csv('training_data/sample.csv', index=False)
+    output.to_csv('training_data/35_features_usecols.csv', index=False)
 
 except Exception as e:
     print(f'Error Occured:\n{e}')
