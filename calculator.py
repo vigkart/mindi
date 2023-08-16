@@ -1,8 +1,6 @@
 import pandas as pd
-import os
+# import os
 import pandas_market_calendars as mcal
-from matplotlib import pyplot as plt
-import seaborn as sns
 import numpy as np
 
 def get_trading_dates(algo_num):
@@ -105,26 +103,9 @@ def aggregate(df, start, end, interval, stats_df, trading_dates):
 
     return stats_df
 
-
-# Plotting stuff:
-
-# stats_df['interval_start'] = pd.to_datetime(stats_df['interval_start'])
-# print(stats_df)
-# plt.plot(stats_df['interval_start'], stats_df['avg_pnl'])
-
-# corr_df = stats_df.drop(['interval_start', 'interval_end'], axis=1)
-
-# corr = corr_df.astype('float').corr()
-# heatmap = sns.heatmap(corr)
-
-# plt.show()
-
-
-
-
 # Creating stats dataframe
 
-# TODO: Add a total profit for the current day column before you add the other trailing stats using aggregate()
+# TODO: Aggregate standard deviation for trailing intervals
 
 def build_features(intervals, df, trading_dates):
     '''Builds stats_df that has {day | pnl | trailing stats for various intervals}'''
