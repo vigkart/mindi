@@ -23,15 +23,19 @@ tile_data = pd.DataFrame(index=range(10), columns=df.columns[2:])
 
 
 # Note, this calculates quantiles using all available data, meaning that for larger day intervals less data is used (because of this, r-values cannot be compared with each other)
+print('\nTrailing Stats Data\n')
 for col in df.columns[2:]:
     stat_df = df[['pnl', col]]
     stat_df = stat_df.dropna()
     
-    # Pearson linearity 
+    # Correlation
     spearman, spval = spearmanr(stat_df[col], stat_df['pnl'])
     pearson, ppval = pearsonr(stat_df[col], stat_df['pnl'])
-    t = (pearson * math.sqrt(10 - 2))/math.sqrt(1-(pearson ** 2))
-    print(f"stat: {col}| spearman: {spearman} & pval {spval}, pearson: {pearson} & pval: {ppval}")
+    col_spaces = 20 - len(col)
+    col_name = col
+    for space in range(col_spaces):
+        col_name += ' '
+    print(f"stat: {col_name} | spearman: {round(spearman,5) } & pval {round(spval, 5)}, pearson: {round(pearson, 5)} & pval: {round(ppval, 5)}")
 
     # Getting value delimiting each quantile
     percentiles = stat_df[col].quantile(quantile_list, interpolation='midpoint')
@@ -47,13 +51,16 @@ for col in df.columns[2:]:
         tile_data[col][percentiles[percentiles == percentile].index[0]] = tile['pnl'].mean()
 
 # Corellating tile_data
-print("\ntile_data\n")
+print("\nQuantile Data\n")
 tile_data = tile_data.apply(pd.to_numeric, errors='coerce')
 for col in tile_data:
     spearman, spval = spearmanr(tile_data[col], pd.Series(tile_data[col].index))
     pearson, ppval = pearsonr(tile_data[col], pd.Series(tile_data[col].index))
-    t = (pearson * math.sqrt(10 - 2))/math.sqrt(1-(pearson ** 2))
-    print(f"stat: {col}| spearman: {spearman} & pval {spval}, pearson: {pearson} & pval: {ppval}")
+    col_spaces = 20 - len(col)
+    col_name = col
+    for space in range(col_spaces):
+        col_name += ' '
+    print(f"stat: {col_name} | spearman: {round(spearman,5) } & pval {round(spval, 5)}, pearson: {round(pearson, 5)} & pval: {round(ppval, 5)}")
 
 # Min-Max normalizing heatmap
 heatmap_data = tile_data
