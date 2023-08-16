@@ -1,3 +1,14 @@
+"""
+Correlator.py is for spitting out several human-readable stats. 
+
+First, it correlates the trailing stats with the pnl using pearson and spearman correlation
+Next, it separates the states into quantiles and saves all of them in tile_data (sorts df into quantiles for each stat, and finds avg profit for each quantile)
+Then, it correlates each stat's quantile value (avg pnl for that quantile) against the number of quantiles (quantiles are in increasing order) using pearson & spearman correlation
+Finally, it normalizes the tile_data and saves it in heatmap_data and displays this as a heatmap.
+
+Using all of this, the user can spot correlations between trailing stats and pnl using a variety of metrics.
+"""
+
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
@@ -49,6 +60,6 @@ heatmap_data = tile_data
 for col in heatmap_data:
     heatmap_data[col] = (heatmap_data[col] - heatmap_data[col].min()) / (heatmap_data[col].max() - heatmap_data[col].min())
 
-# Plotting
-# sns.heatmap(heatmap_data.astype(float))
-# plt.show()
+Plotting
+sns.heatmap(heatmap_data.astype(float))
+plt.show()
