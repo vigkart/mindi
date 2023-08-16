@@ -1,6 +1,7 @@
 import pandas as pd
 import pandas_market_calendars as mcal
 import numpy as np
+import os
 import math
 import time
 
@@ -10,10 +11,11 @@ def get_trading_dates(algo_num):
         returns: df, list
             df of clean dates with day index, list of valid trading days for interval'''
 
-    clean_data_dir = "trading_data/clean_data"
-    filename = f"{clean_data_dir}/{algo_num}_clean.csv"
-    if filename.endswith('_matches.csv'):
-        algo_number = filename.split('_')[0]
+    clean_data_dir = r'trading_data/clean_data'
+    file = str(algo_num) + '_clean.csv'
+    filename = os.path.join(clean_data_dir, file)
+    # clean_data_dir = "trading_data/clean_data"
+    # filename = f"{clean_data_dir}/{algo_num}_clean.csv"
     df = pd.read_csv(filename, usecols=['first_entry_time', 'last_exit_time', 'pnl'])
 
     # Getting date range for cleaned pdq-output
@@ -38,7 +40,7 @@ def get_trading_dates(algo_num):
     return df, trading_dates
 
 
-def aggregate(df, start, end, interval, stats_df, trading_dates):
+def aggregate(df, start, end, interval, stats_df, trading_dates, algo_num):
     '''Aggregates trailing stats
 
     Aggregates stats for interval starting from latest date to earliest date. 
@@ -100,36 +102,37 @@ def aggregate(df, start, end, interval, stats_df, trading_dates):
     # index is the day trailing stats are aggregated for, and the current day is index + 1
     index = df['exit_day_num'][start]
 
+    # Writing current day PnL (not trailing), and Writing Date to Dataframe
     if interval == 1:
-        stats_df['pnl'][index - 1] = total_pnl # writing this to previous row because need curr day pnl
+        stats_df[f'{algo_num}_pnl'][index - 1] = total_pnl # writing this to previous row because need curr day pnl
         try:
             # adding current date to stats_df (bc indexing df at start + 1)
-            stats_df['day'][index] = trading_dates[df['exit_day_num'][start + 1]].strftime("%Y-%m-%d")
+            stats_df[f'{algo_num}_day'][index] = trading_dates[df['exit_day_num'][start + 1]].strftime("%Y-%m-%d")
         except KeyError:
-            stats_df['day'][index] = np.nan
+            stats_df[f'{algo_num}_day'][index] = np.nan
         
 
-
-    stats_df[f'avg_pnl_last_{interval}D'][index] = avg_pnl
-    stats_df[f'num_trades_last_{interval}D'][index] = num_trades
-    stats_df[f'pnl_last_{interval}D'][index] = total_pnl
-    stats_df[f'pl_ratio_last_{interval}D'][index] = pl_ratio
-    stats_df[f'std_last_{interval}D'][index] = std
+    # Writing features to features dataframe
+    stats_df[f'{algo_num}_avg_pnl_last_{interval}D'][index] = avg_pnl
+    stats_df[f'{algo_num}_num_trades_last_{interval}D'][index] = num_trades
+    stats_df[f'{algo_num}_pnl_last_{interval}D'][index] = total_pnl
+    stats_df[f'{algo_num}_pl_ratio_last_{interval}D'][index] = pl_ratio
+    stats_df[f'{algo_num}_std_last_{interval}D'][index] = std
 
     return stats_df
 
 # Creating stats dataframe
-def build_features(intervals, df, trading_dates):
+def build_features(intervals, df, trading_dates, algo_num):
     '''Builds stats_df that has {day | pnl | trailing stats for various intervals}'''
 
     # Initializing stats dataframe
-    stats = ['day', 'pnl']
+    stats = [f'{algo_num}_day', f'{algo_num}_pnl']
     for i in intervals:
-        stats.append(f'avg_pnl_last_{i}D')
-        stats.append(f'num_trades_last_{i}D')
-        stats.append(f'pnl_last_{i}D')
-        stats.append(f'pl_ratio_last_{i}D')
-        stats.append(f'std_last_{i}D')
+        stats.append(f'{algo_num}_avg_pnl_last_{i}D')
+        stats.append(f'{algo_num}_num_trades_last_{i}D')
+        stats.append(f'{algo_num}_pnl_last_{i}D')
+        stats.append(f'{algo_num}_pl_ratio_last_{i}D')
+        stats.append(f'{algo_num}_std_last_{i}D')
     stats_df = pd.DataFrame(index=range(len(trading_dates)), columns=stats)
 
 
@@ -147,7 +150,7 @@ def build_features(intervals, df, trading_dates):
                 i -= 1 
             if len(days) == granularity + 1 or len(days) == granularity:
                 try: 
-                    stats_df = aggregate(df, start, i + 2, granularity, stats_df, trading_dates)
+                    stats_df = aggregate(df, start, i + 2, granularity, stats_df, trading_dates, algo_num)
                     i = days[list(days)[1]] 
                 except IndexError:
                     # if I want to here I can aggregate all of the statistics at the beginning
@@ -157,13 +160,17 @@ def build_features(intervals, df, trading_dates):
     return stats_df
 
 start = time.time()
+algo_num = 46
+training_data_dir = r'training_data'
+output_name = str(algo_num) + '_features.csv'
+output_name = os.path.join(training_data_dir, output_name)
 
 try:
-    df, trading_dates = get_trading_dates(35)
+    df, trading_dates = get_trading_dates(algo_num)
     intervals = [1, 3, 5, 10, 21] # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
 
-    output = build_features(intervals, df, trading_dates)
-    output.to_csv('training_data/35_features_usecols.csv', index=False)
+    output = build_features(intervals, df, trading_dates, algo_num)
+    output.to_csv(output_name, index=False)
 
 except Exception as e:
     print(f'Error Occured:\n{e}')
@@ -171,4 +178,4 @@ except Exception as e:
 finally:
     end = time.time()
     duration = end - start
-    print(f'Start: {start}, End: {end}, Duration: {duration}')
+    print(f'\nStart: {start}, End: {end}, Duration: {duration}\n')

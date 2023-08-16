@@ -8,16 +8,21 @@ Finally, it normalizes the tile_data and saves it in heatmap_data and displays t
 
 Using all of this, the user can spot correlations between trailing stats and pnl using a variety of metrics.
 """
-
+import os
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 import seaborn as sns
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
-import math
 
-df = pd.read_csv("training_data/sample_output4.csv")
+
+algo_num = 46
+training_data_dir = r'training_data'
+filename = str(algo_num) + '_features.csv'
+filename = os.path.join(training_data_dir, filename)
+
+df = pd.read_csv(filename)
 quantile_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] # Currently using deciles
 tile_data = pd.DataFrame(index=range(10), columns=df.columns[2:])
 
@@ -25,13 +30,13 @@ tile_data = pd.DataFrame(index=range(10), columns=df.columns[2:])
 # Note, this calculates quantiles using all available data, meaning that for larger day intervals less data is used (because of this, r-values cannot be compared with each other)
 print('\nTrailing Stats Data\n')
 for col in df.columns[2:]:
-    stat_df = df[['pnl', col]]
+    stat_df = df[[f'{algo_num}_pnl', col]]
     stat_df = stat_df.dropna()
     
     # Correlation
-    spearman, spval = spearmanr(stat_df[col], stat_df['pnl'])
-    pearson, ppval = pearsonr(stat_df[col], stat_df['pnl'])
-    col_spaces = 20 - len(col)
+    spearman, spval = spearmanr(stat_df[col], stat_df[f'{algo_num}_pnl'])
+    pearson, ppval = pearsonr(stat_df[col], stat_df[f'{algo_num}_pnl'])
+    col_spaces = 24 - len(col)
     col_name = col
     for space in range(col_spaces):
         col_name += ' '
@@ -48,7 +53,7 @@ for col in df.columns[2:]:
         lower_bound = percentile
 
         # adding avg pnl for each percentile to heatmap
-        tile_data[col][percentiles[percentiles == percentile].index[0]] = tile['pnl'].mean()
+        tile_data[col][percentiles[percentiles == percentile].index[0]] = tile[f'{algo_num}_pnl'].mean()
 
 # Corellating tile_data
 print("\nQuantile Data\n")
@@ -56,7 +61,7 @@ tile_data = tile_data.apply(pd.to_numeric, errors='coerce')
 for col in tile_data:
     spearman, spval = spearmanr(tile_data[col], pd.Series(tile_data[col].index))
     pearson, ppval = pearsonr(tile_data[col], pd.Series(tile_data[col].index))
-    col_spaces = 20 - len(col)
+    col_spaces = 24 - len(col)
     col_name = col
     for space in range(col_spaces):
         col_name += ' '
