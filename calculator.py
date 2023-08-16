@@ -1,8 +1,9 @@
 import pandas as pd
-# import os
 import pandas_market_calendars as mcal
 import numpy as np
 import math
+import time
+
 
 def get_trading_dates(algo_num):
     '''gets valid trading dates and adds trading day index to clean data
@@ -13,7 +14,7 @@ def get_trading_dates(algo_num):
     filename = f"{clean_data_dir}/{algo_num}_clean.csv"
     if filename.endswith('_matches.csv'):
         algo_number = filename.split('_')[0]
-    df = pd.read_csv(filename)
+    df = pd.read_csv(filename, keep_default_na=False) # Pandas reads 'NA' as nan, but one of the stock tickers is 'NA', so we turn this off
 
     # Getting date range for cleaned pdq-output
     start = df['first_entry_time'].min()
@@ -155,8 +156,19 @@ def build_features(intervals, df, trading_dates):
                 i = -1
     return stats_df
 
-df, trading_dates = get_trading_dates(46)
-intervals = [1, 3, 5, 10, 21] # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
+start = time.time()
 
-output = build_features(intervals, df, trading_dates)
-output.to_csv('training_data/sample_output4.csv', index=False)
+try:
+    df, trading_dates = get_trading_dates(46)
+    intervals = [1, 3, 5, 10, 21] # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
+
+    output = build_features(intervals, df, trading_dates)
+    output.to_csv('training_data/sample.csv', index=False)
+
+except Exception as e:
+    print(f'Error Occured:\n{e}')
+
+finally:
+    end = time.time()
+    duration = end - start
+    print(f'Start: {start}, End: {end}, Duration: {duration}')
