@@ -112,12 +112,6 @@ def aggregate(df, start, end, interval, stats_df, trading_dates, algo_num):
     # Writing current day PnL (not trailing), and Writing Date to Dataframe
     if interval == 1:
         stats_df[f'{algo_num}_pnl'][index - 1] = total_pnl # writing this to previous row because need curr day pnl
-        try:
-            # adding current date to stats_df (bc indexing df at start + 1)
-            stats_df[f'{algo_num}_day'][index] = trading_dates[df['exit_day_num'][start + 1]].strftime("%Y-%m-%d")
-        except KeyError:
-            stats_df[f'{algo_num}_day'][index] = np.nan
-        
 
     # Writing features to features dataframe
     stats_df[f'{algo_num}_avg_pnl_last_{interval}D'][index] = avg_pnl
@@ -133,7 +127,7 @@ def build_features(intervals, df, trading_dates, algo_num):
     '''Builds stats_df that has {day | pnl | trailing stats for various intervals}'''
 
     # Initializing stats dataframe
-    stats = [f'{algo_num}_day', f'{algo_num}_pnl']
+    stats = [f'{algo_num}_pnl']
     for i in intervals:
         stats.append(f'{algo_num}_avg_pnl_last_{i}D')
         stats.append(f'{algo_num}_num_trades_last_{i}D')

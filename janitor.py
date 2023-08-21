@@ -35,15 +35,15 @@ for filename in os.listdir(raw_data_dir):
         turd = [2, 7, 8 , 9 , 10 , 11, 23]
         if int(algo_number) in turd:
             # Remove rows where 'avg_entry_px' or 'avg_exit_px' is < .50 for turd strategies
-            data = data[(data['avg_entry_px'] > .5) | (data['avg_exit_px'] > .5)]
+            data = data[(data['avg_entry_price'] > .5) | (data['avg_exit_price'] > .5)]
         else:
             # Remove rows where 'avg_entry_px' or 'avg_exit_px' is < 5 for non-turd strategies
-            data = data[(data['avg_entry_px'] > 5) | (data['avg_exit_px'] > 5)]
+            data = data[(data['avg_entry_price'] > 5) | (data['avg_exit_price'] > 5)]
 
 
         
         # Calculate the price ratio
-        data['price_ratio'] = data['avg_entry_px'] / data['avg_exit_px']
+        data['price_ratio'] = data['avg_entry_price'] / data['avg_exit_price']
 
         # Removing rows with any infinite values (which can be introduced in previous step)
         numeric_columns = data.select_dtypes(include=[float, int]).columns
