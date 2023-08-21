@@ -16,11 +16,11 @@ def get_trading_dates(algo_num):
     filename = os.path.join(clean_data_dir, file)
     # clean_data_dir = "trading_data/clean_data"
     # filename = f"{clean_data_dir}/{algo_num}_clean.csv"
-    df = pd.read_csv(filename, usecols=['first_entry_time', 'last_exit_time', 'pnl'])
+    df = pd.read_csv(filename, usecols=['entry_time', 'entry_time', 'pnl'])
 
     # Getting date range for cleaned pdq-output
-    start = df['first_entry_time'].min()
-    end = df['last_exit_time'].max()
+    start = df['entry_time'].min()
+    end = df['entry_time'].max()
 
     # Getting market calendar for date range from above, then creating dict of valid market days and day number
     nyse = mcal.get_calendar('NYSE')
@@ -30,8 +30,8 @@ def get_trading_dates(algo_num):
     trading_dates = pd.Index(mcal.date_range(schedule, frequency='1D').date)
 
     try:
-        entry_day_num = df['first_entry_time'].apply(lambda x: trading_dates.get_loc(pd.Timestamp(x).date()))
-        exit_day_num = df['last_exit_time'].apply(lambda x: trading_dates.get_loc(pd.Timestamp(x).date()))
+        entry_day_num = df['entry_time'].apply(lambda x: trading_dates.get_loc(pd.Timestamp(x).date()))
+        exit_day_num = df['entry_time'].apply(lambda x: trading_dates.get_loc(pd.Timestamp(x).date()))
         df['entry_day_num'] = entry_day_num
         df['exit_day_num'] = exit_day_num
     except KeyError as e:
@@ -82,9 +82,13 @@ def aggregate(df, start, end, interval, stats_df, trading_dates, algo_num):
             print(i)
             raise IndexError
     
-
-    if winners == 0 and losers == 0: # if all trades for interval break even
+    pl_ratio = 0
+    if (gains == 0 and losses == 0) or (winners == 0 and losers == 0): # if all trades for interval break even
         pl_ratio = 0
+    elif (gains != 0 and losses == 0) or (winners != 0 and losers == 0):
+        pl_ratio == gains/winners
+    elif (gains == 0 and losses != 0) or (winners == 0 and losers != 0):
+        pl_ratio == losses/losers
     else:
         pl_ratio = (gains/winners)/(losses/losers)
     
@@ -100,7 +104,10 @@ def aggregate(df, start, end, interval, stats_df, trading_dates, algo_num):
     std = math.sqrt(sum/num_trades)
 
     # index is the day trailing stats are aggregated for, and the current day is index + 1
-    index = df['exit_day_num'][start]
+    try:
+        index = df['exit_day_num'][start + 1]
+    except: # This means is the last day with data
+        return stats_df
 
     # Writing current day PnL (not trailing), and Writing Date to Dataframe
     if interval == 1:
@@ -133,7 +140,7 @@ def build_features(intervals, df, trading_dates, algo_num):
         stats.append(f'{algo_num}_pnl_last_{i}D')
         stats.append(f'{algo_num}_pl_ratio_last_{i}D')
         stats.append(f'{algo_num}_std_last_{i}D')
-    stats_df = pd.DataFrame(index=range(len(trading_dates)), columns=stats)
+    stats_df = pd.DataFrame(index=trading_dates, columns=stats)
 
 
     # Loop allows us to calculate moving averages/sums of the statistics for any interval (smallest interval is 1D)
@@ -160,7 +167,7 @@ def build_features(intervals, df, trading_dates, algo_num):
     return stats_df
 
 start = time.time()
-algo_num = 46
+algo_num = 2
 training_data_dir = r'training_data'
 output_name = str(algo_num) + '_features.csv'
 output_name = os.path.join(training_data_dir, output_name)
@@ -170,10 +177,11 @@ try:
     intervals = [1, 3, 5, 10, 21] # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
 
     output = build_features(intervals, df, trading_dates, algo_num)
-    output.to_csv(output_name, index=False)
+    output.to_csv(output_name, index=True)
 
 except Exception as e:
     print(f'Error Occured:\n{e}')
+    raise e
 
 finally:
     end = time.time()
