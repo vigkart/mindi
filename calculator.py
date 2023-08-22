@@ -27,9 +27,13 @@ def get_trading_dates(algo_num):
 
 
 def aggregate(algo_num, stats_df, subframe, interval, trading_dates, index):
+
     try:
         next_day = trading_dates[index + 1]
     except IndexError:
+        return stats_df
+    
+    if index < interval:
         return stats_df
 
     if subframe.empty: # if no trades made in last interval of days
@@ -39,6 +43,7 @@ def aggregate(algo_num, stats_df, subframe, interval, trading_dates, index):
         win_avg = 0
         loss_avg = 0
         std = 0
+
     else:
         num_trades = subframe.shape[0] # Each row represents one trade
         total_pnl = subframe['pnl'].sum()
