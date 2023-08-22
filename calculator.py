@@ -18,7 +18,7 @@ def get_trading_dates(algo_num):
 
     # Getting market calendar for date range from above, then creating Index of valid market days
     nyse = mcal.get_calendar('NYSE')
-    start_date = df['entry_time'].min()
+    start_date = df['exit_time'].min()
     end_date = df['exit_time'].max()
     schedule = nyse.schedule(start_date=start_date, end_date=end_date)
     trading_dates = pd.Index(mcal.date_range(schedule, frequency='1D').date)
