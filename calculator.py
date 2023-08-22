@@ -7,124 +7,84 @@ import time
 
 
 def get_trading_dates(algo_num):
-    '''gets valid trading dates and adds trading day index to clean data
-        returns: df, list
-            df of clean dates with day index, list of valid trading days for interval'''
 
     clean_data_dir = r'trading_data/clean_data'
     file = str(algo_num) + '_clean.csv'
     filename = os.path.join(clean_data_dir, file)
-    # clean_data_dir = "trading_data/clean_data"
-    # filename = f"{clean_data_dir}/{algo_num}_clean.csv"
-    df = pd.read_csv(filename, usecols=['entry_time', 'entry_time', 'pnl'])
+    df = pd.read_csv(filename, usecols=['entry_time', 'exit_time', 'pnl'])
+    df['entry_time'] = pd.to_datetime(df['entry_time']).dt.date
+    df['exit_time'] = pd.to_datetime(df['exit_time']).dt.date
 
-    # Getting date range for cleaned pdq-output
-    start = df['entry_time'].min()
-    end = df['entry_time'].max()
 
-    # Getting market calendar for date range from above, then creating dict of valid market days and day number
+    # Getting market calendar for date range from above, then creating Index of valid market days
     nyse = mcal.get_calendar('NYSE')
-    start_date = pd.Timestamp(start)
-    end_date = pd.Timestamp(end)
+    start_date = df['exit_time'].min()
+    end_date = df['exit_time'].max()
     schedule = nyse.schedule(start_date=start_date, end_date=end_date)
     trading_dates = pd.Index(mcal.date_range(schedule, frequency='1D').date)
-
-    try:
-        entry_day_num = df['entry_time'].apply(lambda x: trading_dates.get_loc(pd.Timestamp(x).date()))
-        exit_day_num = df['entry_time'].apply(lambda x: trading_dates.get_loc(pd.Timestamp(x).date()))
-        df['entry_day_num'] = entry_day_num
-        df['exit_day_num'] = exit_day_num
-    except KeyError as e:
-        print(f"this trading data set has trades on {e.args[0]}, which is not registered as a trading day")
 
     return df, trading_dates
 
 
-def aggregate(df, start, end, interval, stats_df, trading_dates, algo_num):
-    '''Aggregates trailing stats
+def aggregate(algo_num, stats_df, subframe, interval, trading_dates, index):
 
-    Aggregates stats for interval starting from latest date to earliest date. 
-    Average pnl (pnl per trade), sum of trades, sum of profits, pl ratio, standard deviation (std)
-    
-    Parameters:
-        df: Dataframe
-            Cleaned trades df with dates
-        start: int
-            latest day of interval
-        end: int
-            earliest day of interval
-        interval: int
-            number of days in interval 
-
-    Returns:
-        stats_df: dataframe
-            day | total profit | trailing stats for each interval
-    '''
-
-    total_pnl = 0
-    num_trades = start - end + 1 # each row is one trade & going backwards, so end - start is number of trades (zero based index)
-    winners = 0 # number of winning trades
-    losers = 0 # number of losing trades
-    gains = 0
-    losses = 0
-
-    i = start
-    while i >= end:
-        total_pnl += df['pnl'][i]
-        if df['pnl'][i] > 0:
-            winners += 1
-            gains += df['pnl'][i]
-        elif df['pnl'][i] < 0:
-            losers += 1
-            losses += df['pnl'][i]
-        i -= 1
-        if i < 0:
-            print(i)
-            raise IndexError
-    
-    pl_ratio = 0
-    if (gains == 0 and losses == 0) or (winners == 0 and losers == 0): # if all trades for interval break even
-        pl_ratio = 0
-    elif (gains != 0 and losses == 0) or (winners != 0 and losers == 0):
-        pl_ratio == gains/winners
-    elif (gains == 0 and losses != 0) or (winners == 0 and losers != 0):
-        pl_ratio == losses/losers
-    else:
-        pl_ratio = (gains/winners)/(losses/losers)
-    
-    avg_pnl = total_pnl/num_trades
-    
-    # Calculate trailing standard deviation (std)
-    i = start
-    sum = 0
-    while i >= end:
-        sum += (df['pnl'][i] - avg_pnl) ** 2
-        i -= 1
-
-    std = math.sqrt(sum/num_trades)
-
-    # index is the day trailing stats are aggregated for, and the current day is index + 1
     try:
-        index = df['exit_day_num'][start + 1]
-    except: # This means is the last day with data
+        next_day = trading_dates[index + 1]
+    except IndexError:
+        return stats_df
+    
+    if index < interval:
         return stats_df
 
-    # Writing current day PnL (not trailing), and Writing Date to Dataframe
-    if interval == 1:
-        stats_df[f'{algo_num}_pnl'][index - 1] = total_pnl # writing this to previous row because need curr day pnl
+    if subframe.empty: # if no trades made in last interval of days
+        num_trades = 0
+        total_pnl = 0 
+        avg_pnl = 0
+        win_avg = 0
+        loss_avg = 0
+        std = 0
 
-    # Writing features to features dataframe
-    stats_df[f'{algo_num}_avg_pnl_last_{interval}D'][index] = avg_pnl
-    stats_df[f'{algo_num}_num_trades_last_{interval}D'][index] = num_trades
-    stats_df[f'{algo_num}_pnl_last_{interval}D'][index] = total_pnl
-    stats_df[f'{algo_num}_pl_ratio_last_{interval}D'][index] = pl_ratio
-    stats_df[f'{algo_num}_std_last_{interval}D'][index] = std
+    else:
+        num_trades = subframe.shape[0] # Each row represents one trade
+        total_pnl = subframe['pnl'].sum()
+        avg_pnl = total_pnl/num_trades
+        std = subframe['pnl'].std()
+
+        # Find win and loss avgs
+        winners = subframe[subframe['pnl'] > 0]
+        losers = subframe[subframe['pnl'] < 0]
+        num_winners = winners.shape[0]
+        num_losers = losers.shape[0]
+        gains = winners['pnl'].sum()
+        losses = losers['pnl'].sum()
+
+        if num_winners != 0:
+            win_avg = gains/num_winners
+        else:
+            win_avg = 0
+        
+        if num_losers != 0:
+            loss_avg = losses/num_losers
+        else:
+            loss_avg = 0
+        
+
+    # Writing PnL for current day
+    if interval == 1:
+        stats_df[f'{algo_num}_pnl'][trading_dates[index]] = total_pnl 
+
+    # Writing trailing stats
+    stats_df[f'{algo_num}_avg_pnl_last_{interval}D'][next_day] = avg_pnl
+    stats_df[f'{algo_num}_num_trades_last_{interval}D'][next_day] = num_trades
+    stats_df[f'{algo_num}_pnl_last_{interval}D'][next_day] = total_pnl
+    stats_df[f'{algo_num}_win_avg_last_{interval}D'][next_day] = win_avg
+    stats_df[f'{algo_num}_loss_avg_last_{interval}D'][next_day] = loss_avg
+    stats_df[f'{algo_num}_std_last_{interval}D'][next_day] = std
 
     return stats_df
 
-# Creating stats dataframe
-def build_features(intervals, df, trading_dates, algo_num):
-    '''Builds stats_df that has {day | pnl | trailing stats for various intervals}'''
+
+def build_features(df, trading_dates, intervals):
 
     # Initializing stats dataframe
     stats = [f'{algo_num}_pnl']
@@ -132,45 +92,35 @@ def build_features(intervals, df, trading_dates, algo_num):
         stats.append(f'{algo_num}_avg_pnl_last_{i}D')
         stats.append(f'{algo_num}_num_trades_last_{i}D')
         stats.append(f'{algo_num}_pnl_last_{i}D')
-        stats.append(f'{algo_num}_pl_ratio_last_{i}D')
+        stats.append(f'{algo_num}_win_avg_last_{i}D')
+        stats.append(f'{algo_num}_loss_avg_last_{i}D')
         stats.append(f'{algo_num}_std_last_{i}D')
     stats_df = pd.DataFrame(index=trading_dates, columns=stats)
 
-
-    # Loop allows us to calculate moving averages/sums of the statistics for any interval (smallest interval is 1D)
-    for interval in intervals: 
-        granularity = interval
-
-        i = len(df['exit_day_num']) - 1
+    for interval in intervals:
+        i = len(trading_dates)
         while i > 0:
-            days = {}
-            start = i
-            while len(days) <= granularity and i >= 0:
-                if df['exit_day_num'][i] not in days:
-                    days[df['exit_day_num'][i]] = i
-                i -= 1 
-            if len(days) == granularity + 1 or len(days) == granularity:
-                try: 
-                    stats_df = aggregate(df, start, i + 2, granularity, stats_df, trading_dates, algo_num)
-                    i = days[list(days)[1]] 
-                except IndexError:
-                    # if I want to here I can aggregate all of the statistics at the beginning
-                    break
-            elif len(days) < granularity:
-                i = -1
+            granularity = interval
+            days = trading_dates[i - granularity:i]
+            subframe = df[df['exit_time'].isin(days)]
+            stats_df = aggregate(algo_num, stats_df, subframe, interval, trading_dates, i)
+            i -= 1
+    
     return stats_df
+    
 
+# Grabbing the desired file to be processed
 start = time.time()
 algo_num = 2
-training_data_dir = r'training_data'
+features_data_dir = r'features_data'
 output_name = str(algo_num) + '_features.csv'
-output_name = os.path.join(training_data_dir, output_name)
+output_name = os.path.join(features_data_dir, output_name)
 
+# Driver for the processing
 try:
     df, trading_dates = get_trading_dates(algo_num)
     intervals = [1, 3, 5, 10, 21] # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
-
-    output = build_features(intervals, df, trading_dates, algo_num)
+    output = build_features(df, trading_dates, intervals)
     output.to_csv(output_name, index=True)
 
 except Exception as e:
@@ -180,4 +130,4 @@ except Exception as e:
 finally:
     end = time.time()
     duration = end - start
-    print(f'\nStart: {start}, End: {end}, Duration: {duration}\n')
+    print(f'\nFinished processing algo number {algo_num}, Duration: {duration}\n')
