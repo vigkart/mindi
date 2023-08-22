@@ -18,9 +18,9 @@ from scipy.stats import spearmanr
 
 
 algo_num = 46
-training_data_dir = r'training_data'
+features_data_dir = r'features_data'
 filename = str(algo_num) + '_features.csv'
-filename = os.path.join(training_data_dir, filename)
+filename = os.path.join(features_data_dir, filename)
 
 df = pd.read_csv(filename)
 quantile_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] # Currently using deciles

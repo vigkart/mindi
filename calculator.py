@@ -112,9 +112,9 @@ def build_features(df, trading_dates, intervals):
 # Grabbing the desired file to be processed
 start = time.time()
 algo_num = 2
-training_data_dir = r'training_data'
+features_data_dir = r'features_data'
 output_name = str(algo_num) + '_features.csv'
-output_name = os.path.join(training_data_dir, output_name)
+output_name = os.path.join(features_data_dir, output_name)
 
 # Driver for the processing
 try:
