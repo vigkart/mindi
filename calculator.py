@@ -106,31 +106,44 @@ def build_features(df, trading_dates, intervals):
     return stats_df
 
 
-# Grabbing the desired file to be processed
-start = time.time()
-algo_num = 46
-features_data_dir = r"features_data"
-output_name = str(algo_num) + "_features.csv"
-output_name = os.path.join(features_data_dir, output_name)
-
-# Driver for the processing
+# Driver for data processing
 try:
-    df, trading_dates = get_trading_dates(algo_num)
-    intervals = [
-        1,
-        3,
-        5,
-        10,
-        21,
-    ]  # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
-    output = build_features(df, trading_dates, intervals)
-    output.to_csv(output_name, index=True)
+    # Grabbing the desired file to be processed
+    start_init = time.time()
+    features_data_dir = r"features_data"
+    trading_data_dir = r"trading_data"
+    clean_data_dir = os.path.join(trading_data_dir, r"clean_data")
+
+    for filename in os.listdir(clean_data_dir):
+        start = time.time()
+
+        # Getting input data, skipping already processed tables
+        algo_num = int(filename.split("_")[0])
+        output_name = str(algo_num) + "_features.csv"
+        output_name = os.path.join(features_data_dir, output_name)
+        if os.path.isfile(output_name):
+            print(f"Skipped Algo {algo_num} because it has already been processed.")
+            continue
+
+        # Processing data for all specified intervals
+        df, trading_dates = get_trading_dates(algo_num)
+        intervals = [
+            1,
+            3,
+            5,
+            10,
+            21,
+        ]  # [1, 3, 5, 10, 21, 200] these are the real intervals, but we don't have data for 200 days yet
+        output = build_features(df, trading_dates, intervals)
+        output.to_csv(output_name, index=True)
+        end = time.time()
+        print(f"Finished processing Algo {algo_num} in {round(end-start, 2)} seconds.")
 
 except Exception as e:
     print(f"Error Occured:\n{e}")
     raise e
 
 finally:
-    end = time.time()
-    duration = end - start
-    print(f"\nFinished processing algo number {algo_num}, Duration: {duration}\n")
+    end_final = time.time()
+    duration = end_final - start_init
+    print(f"\nFinished processing, Duration: {round(duration, 2)} seconds.\n")
