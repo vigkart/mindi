@@ -41,7 +41,9 @@ for filename in os.listdir(raw_data_dir):
                 ]
             else:
                 # Remove rows where 'avg_entry_px' or 'avg_exit_px' is < 5 for non-turd strategies
-                data = data[(data["avg_entry_price"] > 5) | (data["avg_exit_price"] > 5)]
+                data = data[
+                    (data["avg_entry_price"] > 5) | (data["avg_exit_price"] > 5)
+                ]
 
             # Calculate the price ratio
             data["price_ratio"] = data["avg_entry_price"] / data["avg_exit_price"]
@@ -61,7 +63,8 @@ for filename in os.listdir(raw_data_dir):
 
             # Create the clean dataset by removing the outliers in both the price ratio and pnl
             clean_data = data[
-                (abs(data["price_ratio_z_score"]) <= 3) & (abs(data["pnl_z_score"]) <= 3)
+                (abs(data["price_ratio_z_score"]) <= 3)
+                & (abs(data["pnl_z_score"]) <= 3)
             ]
 
             # Identify the outliers
@@ -79,4 +82,3 @@ for filename in os.listdir(raw_data_dir):
     except Exception as e:
         print(f"Error occured when processing {filename}.")
         print(e)
-

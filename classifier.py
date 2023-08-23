@@ -18,17 +18,21 @@ y_train = pd.read_csv(y_train_path, index_col=0)
 y_test = pd.read_csv(y_test_path, index_col=0)
 
 # Build the model
-model = tf.keras.Sequential([
-        tf.keras.layers.Dense(90, activation='tanh'),
-        tf.keras.layers.Dense(60, activation='elu'),
-        tf.keras.layers.Dense(30, activation='elu'),
-        tf.keras.layers.Dense(15, activation='relu'),
-        tf.keras.layers.Dense(3, activation='sigmoid')
-        ])
+model = tf.keras.Sequential(
+    [
+        tf.keras.layers.Dense(90, activation="tanh"),
+        tf.keras.layers.Dense(60, activation="elu"),
+        tf.keras.layers.Dense(30, activation="elu"),
+        tf.keras.layers.Dense(15, activation="relu"),
+        tf.keras.layers.Dense(3, activation="sigmoid"),
+    ]
+)
 
-model.compile(optimizer='adam',
-              loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
-              metrics=['accuracy'])
+model.compile(
+    optimizer="adam",
+    loss=tf.keras.losses.BinaryCrossentropy(from_logits=False),
+    metrics=["accuracy"],
+)
 
 model.fit(X_train, y_train, epochs=100)
 
@@ -47,7 +51,6 @@ print(binary_predictions.head(15))
 
 # for i, pred in enumerate(binary_predictions):
 #     print(f'Sample {i+1}: {pred}')
-
 
 
 test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
