@@ -16,13 +16,13 @@ import seaborn as sns
 from scipy.stats import pearsonr
 from scipy.stats import spearmanr
 
-
-algo_num = 46
+algo_num = 19
 features_data_dir = r"features_data"
 filename = str(algo_num) + "_features.csv"
 filename = os.path.join(features_data_dir, filename)
 
 df = pd.read_csv(filename)
+df = df.dropna()
 quantile_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  # Currently using deciles
 tile_data = pd.DataFrame(index=range(10), columns=df.columns[2:])
 
@@ -45,10 +45,10 @@ for col in df.columns[2:]:
     )
 
     # Getting value delimiting each quantile
-    percentiles = stat_df[col].quantile(quantile_list, interpolation="midpoint")
-    percentiles = pd.concat([percentiles, pd.Series([float("inf")])]).reset_index(
-        drop=True
-    )
+    unique_values = sorted(stat_df[col].unique())
+    num_values = len(unique_values)
+    percentile_values = [unique_values[int(q * num_values)] for q in quantile_list]
+    percentiles = pd.Series(percentile_values + [float("inf")])
 
     # Calculating mean pnl for each quantile then adding it to heatmap
     lower_bound = float("-inf")
